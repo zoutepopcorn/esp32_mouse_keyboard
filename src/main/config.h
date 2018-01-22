@@ -1,8 +1,8 @@
- 
+
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#define MODULE_ID "ESP32BT_v0.1"
+#define MODULE_ID "Toetsenbordje"
 
 //TODO: change to external UART; currently set to serial port of monitor for debugging
 #define EX_UART_NUM UART_NUM_0
@@ -10,7 +10,7 @@
 // from USB HID Specification 1.1, Appendix B.2
 const uint8_t hid_descriptor[] = {
     /**++++ KEYBOARD ++++**/
-    
+
     0x05, 0x01,                    // Usage Page (Generic Desktop)
     0x09, 0x06,                    // Usage (Keyboard)
     0xa1, 0x01,                    // Collection (Application)
@@ -57,10 +57,10 @@ const uint8_t hid_descriptor[] = {
     0x29, 0xff,                    //   Usage Maxium (Reserved)
     0x81, 0x00,                    //   Input (Data, Array)
 
-    0xc0,                          // End collection  
- 
+    0xc0,                          // End collection
+
     /**++++ MOUSE ++++**/
-    
+
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
     0x09, 0x02,                    // USAGE (Mouse)
     0xa1, 0x01,                    // COLLECTION (Application)
@@ -92,16 +92,16 @@ const uint8_t hid_descriptor[] = {
 
     0xc0,                          //   END_COLLECTION
     0xc0,                           // END_COLLECTION
-    
+
     /**++++ JOYSTICK ++++*/
     //TODO: add joystick to GATT table, otherwise it does not work
-    
+
     0x05, 0x01,                     // Usage Page (Generic Desktop)
     0x09, 0x04,                     // Usage (Joystick)
     0xA1, 0x01,                     // Collection (Application)
     //TODO: is this right here?!?
     0x85, 0x03,                    //     REPORT_ID (3)
-    
+
 	0x15, 0x00,			// Logical Minimum (0)
 	0x25, 0x01,			// Logical Maximum (1)
 	0x75, 0x01,			// Report Size (1)
