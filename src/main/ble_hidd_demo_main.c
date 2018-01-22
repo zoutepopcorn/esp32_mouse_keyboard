@@ -26,7 +26,7 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "esp_bt.h"
+#include "bt.h"
 
 #include "config.h"
 
@@ -119,7 +119,7 @@ static void gpio_demo_init(void)
     gpio_config_t io_conf;
     //disable interrupt
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    //set as output mode        
+    //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
     //bit mask of the pins that you want to set,e.g.GPIO18/19
     io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
@@ -134,7 +134,7 @@ static void gpio_demo_init(void)
     io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
     //bit mask of the pins, use GPIO4/5 here
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
-    //set as input mode    
+    //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull-up mode
     io_conf.pull_up_en = 1;
@@ -177,7 +177,7 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
                     esp_ble_gap_set_device_name(hid_device_name_fabi);
                 }
                 esp_ble_gap_config_adv_data(&hidd_adv_data);
-                
+
             }
             break;
         }
@@ -255,14 +255,14 @@ void process_uart(uint8_t *input, uint16_t len)
     //KD/KU
     //KR
     //KL
-    
+
     //untested commands:
     //KC
     //M
-    
+
     //TBD: joystick (everything)
     // KK (if necessary)
-    
+
     if(len < 2) return;
     //easier this way than typecast in each str* function
     const char *input2 = (const char *) input;
@@ -271,10 +271,10 @@ void process_uart(uint8_t *input, uint16_t len)
     uint8_t keycode = 0;
     esp_ble_bond_dev_t *btdevlist = NULL;
     #define DEBUG_TAG "UART_PARSER"
-    
+
     /**++++ commands without parameters ++++*/
     //get module ID
-    if(strcmp(input2,"ID") == 0) 
+    if(strcmp(input2,"ID") == 0)
     {
         uart_write_bytes(EX_UART_NUM, MODULE_ID, sizeof(MODULE_ID));
         ESP_LOGD(DEBUG_TAG,"sending module id (ID)");
@@ -307,15 +307,15 @@ void process_uart(uint8_t *input, uint16_t len)
         } else ESP_LOGE(DEBUG_TAG,"error getting bonded devices count or no devices bonded");
         return;
     }
-    
+
     //joystick: update data (send a report)
-    if(strcmp(input2,"JU") == 0) 
+    if(strcmp(input2,"JU") == 0)
     {
         //TBD: joystick
         ESP_LOGD(DEBUG_TAG,"TBD! joystick: send report (JU)");
         return;
     }
-    
+
     //keyboard: release all
     if(strcmp(input2,"KR") == 0)
     {
@@ -326,56 +326,56 @@ void process_uart(uint8_t *input, uint16_t len)
         ESP_LOGD(DEBUG_TAG,"keyboard: release all (KR)");
         return;
     }
-    
+
     /**++++ commands with parameters ++++*/
     switch(input[0])
     {
         case 'K': //keyboard
             //key up
-            if(input[1] == 'U' && len == 3) 
+            if(input[1] == 'U' && len == 3)
             {
                 remove_keycode(input[2],keycode_arr);
                 esp_hidd_send_keyboard_value(hid_conn_id,keycode_modifier,keycode_arr,sizeof(keycode_arr));
                 return;
             }
             //key down
-            if(input[1] == 'D' && len == 3) 
+            if(input[1] == 'D' && len == 3)
             {
                 add_keycode(input[2],keycode_arr);
                 esp_hidd_send_keyboard_value(hid_conn_id,keycode_modifier,keycode_arr,sizeof(keycode_arr));
                 return;
             }
             //keyboard, set locale
-            if(input[1] == 'L' && len == 3) 
-            { 
-                if(input[2] < LAYOUT_MAX) 
+            if(input[1] == 'L' && len == 3)
+            {
+                if(input[2] < LAYOUT_MAX)
                 {
                     config.locale = input[2];
                     update_config();
                 } else ESP_LOGE(DEBUG_TAG,"Locale out of range");
                 return;
             }
-            
+
             //keyboard, write
             if(input[1] == 'W')
             {
                 ESP_LOGI(DEBUG_TAG,"sending keyboard write, len: %d (bytes, not characters!)",len-2);
                 for(uint16_t i = 2; i<len; i++)
                 {
-                    if(input[i] == '\0') 
+                    if(input[i] == '\0')
                     {
                         ESP_LOGI(DEBUG_TAG,"terminated string, ending KW");
                         break;
                     }
                     keycode = parse_for_keycode(input[i],config.locale,&keycode_modifier,&keycode_deadkey_first); //send current byte to parser
-                    if(keycode == 0) 
+                    if(keycode == 0)
                     {
                         ESP_LOGI(DEBUG_TAG,"keycode is 0 for 0x%X, skipping to next byte",input[i]);
                         continue; //if no keycode is found,skip to next byte (might be a 16bit UTF8)
                     }
                     ESP_LOGI(DEBUG_TAG,"keycode: %d, modifier: %d, deadkey: %d",keycode,keycode_modifier,keycode_deadkey_first);
                     //TODO: do deadkey sequence...
-                    
+
                     //if a keycode is found, add to keycodes for HID
                     add_keycode(keycode,keycode_arr);
                     ESP_LOGI(DEBUG_TAG,"keycode arr, adding and removing:");
@@ -392,14 +392,14 @@ void process_uart(uint8_t *input, uint16_t len)
                 }
                 return;
             }
-            
+
             //keyboard, get keycode for unicode bytes
-            if(input[1] == 'C' && len == 4) 
+            if(input[1] == 'C' && len == 4)
             {
                 keycode = get_keycode(input[2],config.locale,&keycode_modifier,&keycode_deadkey_first);
                 //if the first byte is not sufficient, try with second byte.
-                if(keycode == 0) 
-                { 
+                if(keycode == 0)
+                {
                     keycode = get_keycode(input[3],config.locale,&keycode_modifier,&keycode_deadkey_first);
                 }
                 //first the keycode + modifier are sent.
@@ -411,8 +411,8 @@ void process_uart(uint8_t *input, uint16_t len)
                 return;
             }
             //keyboard, get unicode mapping between 2 locales
-            if(input[1] == 'K' && len == 6) 
-            { 
+            if(input[1] == 'K' && len == 6)
+            {
                 //cpoint = get_cpoint((input[2] << 8) || input[3],input[4],input[5]);
                 //uart_write_bytes(EX_UART_NUM, (char *)&cpoint, sizeof(cpoint));
                 //uart_write_bytes(EX_UART_NUM, &nl, sizeof(nl));
@@ -432,7 +432,7 @@ void process_uart(uint8_t *input, uint16_t len)
             //TBD: joystick
             ESP_LOGD(DEBUG_TAG,"TBD! joystick");
             break;
-        
+
         default: //test for management commands
             break;
     }
@@ -451,9 +451,9 @@ void process_uart(uint8_t *input, uint16_t len)
         if(counter == 0)
         {
             ESP_LOGE(DEBUG_TAG,"error deleting device, no paired devices");
-            return; 
+            return;
         }
-        
+
         if(input[2] >= '0' && input[2] <= '9') input[2] -= '0';
         if(input[2] >= counter)
         {
@@ -493,7 +493,7 @@ void process_uart(uint8_t *input, uint16_t len)
         ESP_LOGD(DEBUG_TAG,"management: pairing %d (PM)",input[2]);
         return;
     }
-    
+
     //set BT names (either FABI or FLipMouse)
     if(strcmp(input2,"ID_FABI") == 0)
     {
@@ -502,15 +502,15 @@ void process_uart(uint8_t *input, uint16_t len)
         ESP_LOGD(DEBUG_TAG,"management: set device name to FABI (ID_FABI)");
         return;
     }
-    if(strcmp(input2,"ID_FLIPMOUSE") == 0) 
+    if(strcmp(input2,"ID_FLIPMOUSE") == 0)
     {
         config.bt_device_name_index = 1;
         update_config();
         ESP_LOGD(DEBUG_TAG,"management: set device name to FLipMouse (ID_FLIPMOUSE)");
         return;
     }
-    
-    
+
+
     ESP_LOGE(DEBUG_TAG,"No command executed with: %s ; len= %d\n",input,len);
 }
 
@@ -523,16 +523,16 @@ void uart_stdin(void *pvParameters)
     char character;
     /** demo mouse speed */
     #define MOUSE_SPEED 30
-    
+
     //Install UART driver, and get the queue.
     uart_driver_install(CONFIG_CONSOLE_UART_NUM, UART_FIFO_LEN * 2, UART_FIFO_LEN * 2, 0, NULL, 0);
-    
-    
+
+
     while(1)
     {
         // read single byte
         uart_read_bytes(CONFIG_CONSOLE_UART_NUM, (uint8_t*) &character, 1, portMAX_DELAY);
-		
+
         //sum up characters to one \n terminated command and send it to
         //UART parser
         if(character == '\n' || character == '\r')
@@ -604,25 +604,25 @@ void app_main()
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
-    
+
     // Read config
     nvs_handle my_handle;
     ret = nvs_open("fabi_c", NVS_READWRITE, &my_handle);
     if(ret != ESP_OK) ESP_LOGE("MAIN","error opening NVS");
     ret = nvs_get_u8(my_handle, "btname_i", &config.bt_device_name_index);
-    if(ret != ESP_OK) 
+    if(ret != ESP_OK)
     {
         ESP_LOGE("MAIN","error reading NVS - bt name, setting to FABI");
         config.bt_device_name_index = 0;
     }
     ret = nvs_get_u8(my_handle, "locale", &config.locale);
-    if(ret != ESP_OK || config.locale >= LAYOUT_MAX) 
+    if(ret != ESP_OK || config.locale >= LAYOUT_MAX)
     {
         ESP_LOGE("MAIN","error reading NVS - locale, setting to US_INTERNATIONAL");
         config.locale = LAYOUT_US_INTERNATIONAL;
     }
     nvs_close(my_handle);
-    
+
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
@@ -648,7 +648,7 @@ void app_main()
         LOG_ERROR("%s init bluedroid failed\n", __func__);
         return;
     }
-    
+
     //load HID country code for locale before initialising HID
     hidd_set_countrycode(get_hid_country_code(config.locale));
 
@@ -671,15 +671,14 @@ void app_main()
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
     /* If your BLE device act as a Slave, the init_key means you hope which types of key of the master should distribut to you,
     and the response key means which key you can distribut to the Master;
-    If your BLE device act as a master, the response key means you hope which types of key of the slave should distribut to you, 
+    If your BLE device act as a master, the response key means you hope which types of key of the slave should distribut to you,
     and the init key means which key you can distribut to the slave. */
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 
     //init the gpio pin (not needing GPIOs by now...)
     //gpio_demo_init();
-    
+
     xTaskCreate(&uart_stdin, "stdin", 2048, NULL, 5, NULL);
 
 }
-
