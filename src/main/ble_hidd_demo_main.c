@@ -53,12 +53,13 @@ static uint8_t keycode_arr[6];
 //static joystick_data_t joystick;//currently unused, no joystick implemented
 static config_data_t config;
 
+void jiggle(void *pvParameters);
 
 #define CHAR_DECLARATION_SIZE   (sizeof(uint8_t))
 
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 
-const char hid_device_name_fabi[] = "FABI";
+const char hid_device_name_fabi[] = "ONZIN";
 const char hid_device_name_flipmouse[] = "FLipMouse";
 static uint8_t hidd_service_uuid128[] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
@@ -514,12 +515,26 @@ void process_uart(uint8_t *input, uint16_t len)
     ESP_LOGE(DEBUG_TAG,"No command executed with: %s ; len= %d\n",input,len);
 }
 
+void jiggle(void *pvParameters)
+{
+  #define MOUSE_SPEED 30
+
+  while(1)
+  {
+    esp_hidd_send_mouse_value(hid_conn_id,0,-MOUSE_SPEED,0,0);  // muis naar links
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    esp_hidd_send_mouse_value(hid_conn_id,0,MOUSE_SPEED,0,0); // muis naar rechts
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
 
 void uart_stdin(void *pvParameters)
 {
     static uint8_t command[50];
     static uint8_t cpointer = 0;
     static uint8_t keycode = 0;
+
     char character;
     /** demo mouse speed */
     #define MOUSE_SPEED 30
@@ -530,6 +545,13 @@ void uart_stdin(void *pvParameters)
 
     while(1)
     {
+
+        // esp_hidd_send_mouse_value(hid_conn_id,0,-MOUSE_SPEED,0,0);  // muis naar links
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        //
+        // esp_hidd_send_mouse_value(hid_conn_id,0,MOUSE_SPEED,0,0); // muis naar rechts
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+
         // read single byte
         uart_read_bytes(CONFIG_CONSOLE_UART_NUM, (uint8_t*) &character, 1, portMAX_DELAY);
 
@@ -593,6 +615,15 @@ void uart_stdin(void *pvParameters)
 }
 
 
+volatile int g_cnt = 1;
+void tm_clbk(TimerHandle_t tm_hndl)
+{
+    printf("Timer Callback Called %d time", g_cnt);
+    ++g_cnt;
+}
+
+
+
 void app_main()
 {
     esp_err_t ret;
@@ -604,6 +635,7 @@ void app_main()
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+
 
     // Read config
     nvs_handle my_handle;
@@ -622,6 +654,8 @@ void app_main()
         config.locale = LAYOUT_US_INTERNATIONAL;
     }
     nvs_close(my_handle);
+
+
 
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -680,5 +714,6 @@ void app_main()
     //gpio_demo_init();
 
     xTaskCreate(&uart_stdin, "stdin", 2048, NULL, 5, NULL);
+    xTaskCreate(&jiggle, "jiggle", 2048, NULL, 5, NULL);
 
 }
